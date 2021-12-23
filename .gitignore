@@ -1,0 +1,12 @@
+.DS_Store
+.DS_Store?
+__pycache__/
+.idea/*
+datasets/*
+checkpoints/*
+models/*
+phases/*
+pretrained_networks/*
+recon/*
+runs/*
+
