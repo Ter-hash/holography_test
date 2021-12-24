@@ -17,6 +17,7 @@ import torch
 import torch.nn as nn
 
 import utils.utils as utils
+from algorithms import double_phase
 from propagation_ASM import propagation_ASM, compute_zernike_basis, combine_zernike_basis
 from utils.pytorch_prototyping.pytorch_prototyping import Conv2dSame, Unet
 
@@ -63,6 +64,7 @@ class HoloNet(nn.Module):
         to enforce uniformity, if desired. Same as target dimensions
     slm_phase: encoded phase-only representation at SLM plane, same dimensions
     """
+
     def __init__(self, distance=0.1, wavelength=520e-9, feature_size=6.4e-6,
                  zernike_coeffs=None, source_amplitude=None, target_field=None, latent_codes=None,
                  initial_phase=None, final_phase_only=None, proptype='ASM', linear_conv=True,
@@ -181,7 +183,7 @@ class HoloNet(nn.Module):
         # switch to amplitude+phase and apply source amplitude adjustment
         amp, ang = utils.rect_to_polar(slm_naive.real, slm_naive.imag)
         # amp, ang = slm_naive.abs(), slm_naive.angle()  # PyTorch 1.7.0 Complex tensor doesn't support
-                                                         # the gradient of angle() currently.
+        # the gradient of angle() currently.
 
         if self.source_amp is not None and self.manual_aberr_corr:
             amp = amp / self.source_amp
@@ -231,6 +233,7 @@ class HoloNet(nn.Module):
 
 class InitialPhaseUnet(nn.Module):
     """computes the initial input phase given a target amplitude"""
+
     def __init__(self, num_down=8, num_features_init=32, max_features=256,
                  norm=nn.BatchNorm2d):
         super(InitialPhaseUnet, self).__init__()
@@ -251,6 +254,7 @@ class InitialPhaseUnet(nn.Module):
 
 class FinalPhaseOnlyUnet(nn.Module):
     """computes the final SLM phase given a naive SLM amplitude and phase"""
+
     def __init__(self, num_down=8, num_features_init=32, max_features=256,
                  norm=nn.BatchNorm2d, num_in=4):
         super(FinalPhaseOnlyUnet, self).__init__()
@@ -271,6 +275,7 @@ class FinalPhaseOnlyUnet(nn.Module):
 
 class PhaseOnlyUnet(nn.Module):
     """computes the final SLM phase given a target amplitude"""
+
     def __init__(self, num_down=10, num_features_init=16, norm=nn.BatchNorm2d):
         super(PhaseOnlyUnet, self).__init__()
 
