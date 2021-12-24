@@ -27,15 +27,15 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
 
     Inputs
     ------
+    u_in:输入为 (num_images, 1, height, width) 的复数张量 (torch.cfloat)
     u_in: PyTorch Complex tensor (torch.cfloat) of size (num_images, 1, height, width) -- updated with PyTorch 1.7.0
+    # 单个全息特征 (height, width)
     feature_size: (height, width) of individual holographic features in m
     wavelength: wavelength in m
     z: propagation distance
     linear_conv: if True, pad the input to obtain a linear convolution
-    padtype: 'zero' to pad with zeros, 'median' to pad with median of u_in's
-        amplitude
-    return_H[_exp]: used for precomputing H or H_exp, ends the computation early
-        and returns the desired variable
+    padtype: 'zero' to pad with zeros, 'median' to pad with median of u_in's amplitude
+    return_H[_exp]: used for precomputing H or H_exp, ends the computation early and returns the desired variable
     precomped_H[_exp]: the precomputed value for H or H_exp
     dtype: torch dtype for computation at different precision
 
@@ -51,7 +51,7 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
         if padtype == 'zero':
             padval = 0
         elif padtype == 'median':
-            padval = torch.median(torch.pow((u_in**2).sum(-1), 0.5))
+            padval = torch.median(torch.pow((u_in ** 2).sum(-1), 0.5))
         u_in = utils.pad_image(u_in, conv_size, padval=padval, stacked_complex=False)
 
     if precomped_H is None and precomped_H_exp is None:
@@ -75,7 +75,7 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
         FX, FY = np.meshgrid(fx, fy)
 
         # transfer function in numpy (omit distance)
-        HH = 2 * math.pi * np.sqrt(1 / wavelength**2 - (FX**2 + FY**2))
+        HH = 2 * math.pi * np.sqrt(1 / wavelength ** 2 - (FX ** 2 + FY ** 2))
 
         # create tensor & upload to device (GPU)
         H_exp = torch.tensor(HH, dtype=dtype).to(u_in.device)
@@ -95,8 +95,8 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
         H_exp = torch.mul(H_exp, z)
 
         # band-limited ASM - Matsushima et al. (2009)
-        fy_max = 1 / np.sqrt((2 * z * (1 / y))**2 + 1) / wavelength
-        fx_max = 1 / np.sqrt((2 * z * (1 / x))**2 + 1) / wavelength
+        fy_max = 1 / np.sqrt((2 * z * (1 / y)) ** 2 + 1) / wavelength
+        fx_max = 1 / np.sqrt((2 * z * (1 / x)) ** 2 + 1) / wavelength
         H_filter = torch.tensor(((np.abs(FX) < fx_max) & (np.abs(FY) < fy_max)).astype(np.uint8), dtype=dtype)
 
         # get real/img components
@@ -265,7 +265,7 @@ def compute_zernike_basis(num_polynomials, field_res, dtype=torch.float32, wo_pi
     """
 
     # size the zernike basis to avoid circular masking
-    zernike_diam = int(np.ceil(np.sqrt(field_res[0]**2 + field_res[1]**2)))
+    zernike_diam = int(np.ceil(np.sqrt(field_res[0] ** 2 + field_res[1] ** 2)))
 
     # create zernike functions
 

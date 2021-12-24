@@ -60,7 +60,10 @@ p.add_argument('--src_type', type=str, default='sLED', help='sLED or LED')
 
 # parse arguments
 opt = p.parse_args()
+# 实验运行名称
 run_id = f'{opt.experiment}_{opt.method}_{opt.prop_model}'  # {algorithm}_{prop_model} format
+
+# 使用 citl
 if opt.citl:
     run_id = f'{run_id}_citl'
 
@@ -73,7 +76,7 @@ if opt.citl:
 
 # Hyperparameters setting
 cm, mm, um, nm = 1e-2, 1e-3, 1e-6, 1e-9
-
+# 使用部分相干光波传播模型时
 if opt.prop_model == "PARTIAL":
     prop_dist = (10 * cm, 10 * cm, 10 * cm)[channel]  # propagation distance from SLM plane to target plane
     wavelength = (634.8 * nm, 510 * nm, 450 * nm)[channel]  # SLED
@@ -88,12 +91,12 @@ slm_res = (1080, 1920)  # resolution of SLM
 image_res = (1080, 1920)
 roi_res = (880, 1600)  # regions of interest (to penalize for SGD)
 dtype = torch.float32  # default datatype (Note: the result may be slightly different if you use float64, etc.)
-device = torch.device('cuda')  # The gpu you are using
+# device = torch.device('cuda')  # The gpu you are using
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Options for the algorithm
 loss = nn.MSELoss().to(device)  # loss functions to use (try other loss functions!)
 s0 = 1.0  # initial scale
-
 root_path = os.path.join(opt.root_path, run_id, chan_str)  # path for saving out optimized phases
 
 # Tensorboard writer
@@ -113,7 +116,6 @@ else:
 # Simulation model
 if opt.prop_model == 'ASM':
     propagator = propagation_ASM  # Ideal model
-
 elif opt.prop_model.upper() == 'MODEL':
     blur = utils.make_kernel_gaussian(0.85, 3)
     propagator = ModelPropagate(distance=prop_dist,  # Parameterized wave propagation model
@@ -141,6 +143,7 @@ elif opt.prop_model.upper() == 'CNNpropCNN':
     pass
 
 # Select Phase generation method, algorithm
+# 全息图优化方法
 if opt.method == 'SGD':
     phase_only_algorithm = SGD(prop_dist, wavelength, feature_size, opt.num_iters, roi_res, root_path,
                                opt.prop_model, propagator, loss, opt.lr, opt.lr_s, s0, opt.citl, camera_prop, writer,
@@ -159,24 +162,30 @@ elif opt.method == 'UNET':
     phase_only_algorithm = PhaseOnlyUnet(num_features_init=32).to(device)
     model_path = os.path.join(opt.generator_dir, f'unet20_{chan_str}.pth')
     image_res = (1024, 2048)
-elif opt.method == "3DNET":
-    pass
+elif opt.method == "UNET3D":
+    phase_only_algorithm = Unet3D().to(device)
+    model_path = os.path.join(opt.generator_dir, f'unet3d_{chan_str}.pth')
+    image_res = (1024, 2048)
 
+# 加载训练好的优化网络
 if 'NET' in opt.method:
     checkpoint = torch.load(model_path)
     phase_only_algorithm.load_state_dict(checkpoint)
     phase_only_algorithm.eval()
 
 # Augmented image loader (if you want to shuffle, augment dataset, put options accordingly.)
+# 加载图像
 image_loader = ImageLoader(opt.data_path, channel=channel,
                            image_res=image_res, homography_res=roi_res,
                            crop_to_homography=True,
                            shuffle=False, vertical_flips=False, horizontal_flips=False)
 
 # Loop over the dataset
+# 遍历数据集
 for k, target in enumerate(image_loader):
     # get target image
     target_amp, target_res, target_filename = target
+    print(target_amp.shape, target_res, target_filename)
     target_path, target_filename = os.path.split(target_filename[0])
     target_idx = target_filename.split('_')[-1]
     target_amp = target_amp.to(device)
@@ -187,6 +196,7 @@ for k, target in enumerate(image_loader):
     phase_only_algorithm.phase_path = os.path.join(root_path)
 
     # run algorithm (See algorithm_modules.py and algorithms.py)
+    # 最终的相位图
     if opt.method in ['DPAC', 'HOLONET', 'UNET']:
         # direct methods
         _, final_phase = phase_only_algorithm(target_amp)
