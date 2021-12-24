@@ -59,22 +59,30 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
         field_resolution = u_in.size()
 
         # number of pixels
+        # 取自于图像的高度和宽度
         num_y, num_x = field_resolution[2], field_resolution[3]
 
         # sampling inteval size
+        # 抽样间隔取自于 SLM pitch
         dy, dx = feature_size
 
         # size of the field
+        # 抽样间隔乘以图像的高宽
         y, x = (dy * float(num_y), dx * float(num_x))
 
         # frequency coordinates sampling
+        # 创建等差数列 linspace(start, stop, num)来采样频率坐标
         fy = np.linspace(-1 / (2 * dy) + 0.5 / (2 * y), 1 / (2 * dy) - 0.5 / (2 * y), num_y)
         fx = np.linspace(-1 / (2 * dx) + 0.5 / (2 * x), 1 / (2 * dx) - 0.5 / (2 * x), num_x)
 
         # momentum/reciprocal space
+        # NeuralHolography3D中公式1 传递函数 H 的空间频率
+        # Return coordinate matrices from coordinate vectors.
+        # 用fx,fy 生成坐标矩阵
         FX, FY = np.meshgrid(fx, fy)
 
         # transfer function in numpy (omit distance)
+        # NeuralHolography3D中公式1 传递函数 H的指数部分
         HH = 2 * math.pi * np.sqrt(1 / wavelength ** 2 - (FX ** 2 + FY ** 2))
 
         # create tensor & upload to device (GPU)
@@ -92,6 +100,7 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
 
     if precomped_H is None:
         # multiply by distance
+        # 对两个张量进行逐元素乘法
         H_exp = torch.mul(H_exp, z)
 
         # band-limited ASM - Matsushima et al. (2009)
@@ -101,7 +110,7 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
 
         # get real/img components
         H_real, H_imag = utils.polar_to_rect(H_filter.to(u_in.device), H_exp)
-
+        # 增加新的维度进行堆叠
         H = torch.stack((H_real, H_imag), 4)
         H = utils.ifftshift(H)
         H = torch.view_as_complex(H)
@@ -127,7 +136,7 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
     U1 = torch.fft.fftn(utils.ifftshift(u_in), dim=(-2, -1), norm='ortho')
 
     U2 = H * U1
-
+    # FFT变换后的DC分量移到正中心
     u_out = utils.fftshift(torch.fft.ifftn(U2, dim=(-2, -1), norm='ortho'))
 
     if linear_conv:

@@ -110,7 +110,8 @@ def ifftshift(tensor):
 
 
 def fftshift(tensor):
-    """fftshift for tensors of dimensions [minibatch_size, num_channels, height, width, 2]
+    """
+    fftshift for tensors of dimensions [minibatch_size, num_channels, height, width, 2]
 
     shifts the width and heights
     """

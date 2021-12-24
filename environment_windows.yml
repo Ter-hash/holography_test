@@ -115,10 +115,9 @@ dependencies:
   - pip:
     - configargparse==1.2.3
     - future==0.18.2
-    - pycapture2==2.13.61
+#    - pycapture2==2.13.61
     - pyfirmata==1.1.0
     - pyserial==3.5
     - tensorboardx==2.1
     - torchgeometry==0.1.2
     - wxpython==4.1.1
-
