@@ -89,7 +89,8 @@ feature_size = (6.4 * um, 6.4 * um)  # SLM pitch
 homography_res = (880, 1600)  # for CITL crop, see ImageLoader
 
 # Training parameters
-device = torch.device('cuda')
+# device = torch.device('cuda')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 use_mse_init = False  # first 500 iters will be MSE regardless of loss_fun
 
 # Image data for training

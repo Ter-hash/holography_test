@@ -77,8 +77,8 @@ slm_res = (1080, 1920)  # resolution of SLM
 image_res = (1080, 1920)  # 1080p dataset
 roi_res = (880, 1600)  # regions of interest (to penalize)
 dtype = torch.float32  # default datatype (results may differ if using, e.g., float64)
-device = torch.device('cuda')  # The gpu you are using
-
+# device = torch.device('cuda')  # The gpu you are using
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # Options for the algorithm
 lr_s_phase = opt.lr_phase / 200
 loss_model = nn.MSELoss().to(device)  # loss function for SGD (or perceptualloss.PerceptualLoss())

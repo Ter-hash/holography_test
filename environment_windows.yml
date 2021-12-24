@@ -121,4 +121,4 @@ dependencies:
     - tensorboardx==2.1
     - torchgeometry==0.1.2
     - wxpython==4.1.1
-prefix: C:\Users\Suyeon\anaconda3\envs\neural-holography
+
