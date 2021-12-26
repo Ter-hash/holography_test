@@ -27,7 +27,7 @@ def propagation_ASM(u_in, feature_size, wavelength, z, linear_conv=True,
 
     Inputs
     ------
-    u_in:输入为 (num_images, 1, height, width) 的复数张量 (torch.cfloat)
+    u_in:输入为 (num_images, 1, height, width) 的复数张量 (torch.cfloat) (num_images, 通道, 高, 宽)
     u_in: PyTorch Complex tensor (torch.cfloat) of size (num_images, 1, height, width) -- updated with PyTorch 1.7.0
     # 单个全息特征 (height, width)
     feature_size: (height, width) of individual holographic features in m

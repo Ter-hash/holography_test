@@ -16,6 +16,7 @@ before ASM propagation and also directly after propagation to the target planes
 
 import math
 
+import configargparse
 import cv2
 import torch
 import numpy as np
@@ -23,31 +24,42 @@ import utils.utils as utils
 import torch.fft
 
 from propagation_ASM import propagation_ASM
+from utils.augmented_image_loader import ImageLoader
 
 
 class CNNprop:
     """
     CNN_slm
-    input:全息图
+    input:SLM显示的相位信息，来自于相机捕获 2*M*N
     input: two channels with the real and imaginary values of the field on the SLM
     outputs: the real and imaginary components of the adjusted field at the SLM plane
-    output:优化过的全息图
+    output:优化过的全息图 2*M*N
     """
 
-    def __init__(self, input):
-        self.input = input
+    def __init__(self, u_in):
+        self.u_in = u_in
 
-    def optm_input(self):
-        print(self.input.shape)
+    def optim_slm(self):
+        """
+        优化输入的相位图
+        """
+        print(f"1.优化 SLM 完成 {self.u_in.shape}")
+        return self.u_in
 
 
 class propCNN:
     """
     CNN_target
-    input:经过ASM传播过来的多个目标平面
-    输出：经过CNN调整后的多个目标平面
+    input:经过ASM传播过来的多个目标平面 2*M*N
+    output：经过CNN调整后的多个目标平面 2*M*N
     """
-    pass
+
+    def __init__(self, u_in):
+        self.u_in = u_in
+
+    def optim_target(self):
+        print(f"3.优化 target 完成 {self.u_in.shape}")
+        return self.u_in
 
 
 class CNNpropCNN:
@@ -61,22 +73,66 @@ class CNNpropCNN:
     def __init__(self, u_in):
         self.u_in = u_in
 
-    def to_ASM(self):
-        """
-        propagation_ASM(self.u_in, feature_size, wavelength, z, linear_conv=True,
-        padtype='zero', return_H=False, precomped_H=None,
-        return_H_exp=False, precomped_H_exp=None,
-        dtype=torch.float32):
-        """
-        slm_res = (1080, 1920)
-        init_phase = (-0.5 + 1.0 * torch.rand(1, 1, *slm_res)).to("cuda")
-        return propagation_ASM(torch.empty(*init_phase.shape, dtype=torch.complex64), (6.4 * 1e-6, 6.4 * 1e-6),
-                               634.8 * 1e-9, 10 * 1e-2, )
+    def process(self):
+        cnn_prop = CNNprop(res)
+        optim_slm = cnn_prop.optim_slm()
+        print("2.ASM 转换过程(1->j)")
+        prop_cnn = propCNN(res)
+        prop_cnn = prop_cnn.optim_target()
+
+
+class PASM:
+    def __init__(self):
+        pass
+
+
+def convert_phase_input(target_amp):
+    """
+    将SLM_phase 转换为 2*M*N
+    the real and imaginary values of the field on the SLM
+    为 CNN 提供输入
+    """
+    target_amp = target_amp.to(device)
+    # 由ASM变换
+    res = propagation_ASM(target_amp, feature_size, wavelength, prop_dist, )
+    # res = target_amp
+    res = res[0, 0, :, :]
+    # print(res.shape)
+    # 拆分实部和虚部，构造CNN的输入
+    res = torch.stack((res.real, res.imag))
+    # print(res.shape)
+    return res
 
 
 if __name__ == "__main__":
+    # Command line argument processing
+    p = configargparse.ArgumentParser()
+    p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path to config file.')
+    p.add_argument('--channel', type=int, default=1, help='Red:0, green:1, blue:2')
+    p.add_argument('--data_path', type=str, default='./data', help='Directory for the dataset')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # parse arguments
+    opt = p.parse_args()
+    channel = opt.channel
+    # 超参数
     cm, mm, um, nm = 1e-2, 1e-3, 1e-6, 1e-9
-    phases_name = "./phases/1_SGD_ASM/blue/1.png"
-    img = cv2.imread(phases_name)
-    cnn_prop_cnn = CNNpropCNN(img)
-    print(cnn_prop_cnn.to_ASM().shape)
+    feature_size = (6.4 * um, 6.4 * um)  # SLM pitch
+    wavelength = (638 * nm, 520 * nm, 450 * nm)[channel]  # wavelength of each color
+    prop_dist = (20 * cm, 20 * cm, 20 * cm)[channel]  # propagation distance from SLM plane to target plane
+    image_res = (1080, 1920)
+    # regions of interest (to penalize for SGD)
+    roi_res = (880, 1600)
+    # 加载数据集
+    image_loader = ImageLoader("./data", channel=0, image_res=image_res, homography_res=roi_res,
+                               crop_to_homography=True,
+                               shuffle=False, vertical_flips=False, horizontal_flips=False)
+
+    for k, target in enumerate(image_loader):
+        print(f"图片 {k}")
+        target_amp, target_res, target_filename = target
+        print(target_amp.shape, target_res, target_filename)
+        res = convert_phase_input(target_amp)
+        # CNNpropCNN 模型
+        cnn_prop = CNNpropCNN(res)
+        cnn_prop.process()
+        print("\n")
