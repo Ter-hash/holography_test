@@ -35,7 +35,7 @@ from tensorboardX import SummaryWriter
 import utils.utils as utils
 import utils.perceptualloss as perceptualloss
 
-from propagation_model import ModelPropagate
+from propagation_NH import ModelPropagate
 from holonet import *
 from utils.augmented_image_loader import ImageLoader
 

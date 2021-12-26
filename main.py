@@ -32,7 +32,7 @@ from torch.utils.tensorboard import SummaryWriter
 import utils.utils as utils
 from propagation_partial import PartialProp
 from utils.augmented_image_loader import ImageLoader
-from propagation_model import ModelPropagate
+from propagation_NH import ModelPropagate
 from utils.modules import SGD, GS, DPAC, PhysicalProp
 from holonet import HoloNet, InitialPhaseUnet, FinalPhaseOnlyUnet, PhaseOnlyUnet
 from propagation_ASM import propagation_ASM
@@ -42,8 +42,10 @@ p = configargparse.ArgumentParser()
 p.add('-c', '--config_filepath', required=False, is_config_file=True, help='Path to config file.')
 
 p.add_argument('--channel', type=int, default=1, help='Red:0, green:1, blue:2')
-p.add_argument('--method', type=str, default='SGD', help='Type of algorithm, GS/SGD/DPAC/HOLONET/UNET/?')
-p.add_argument('--prop_model', type=str, default='ASM', help='Type of propagation model, ASM/MODEL/PARTIAL/?')
+# 优化方法
+p.add_argument('--method', type=str, default='SGD', help='Type of algorithm, GS/SGD/DPAC/HOLONET/UNET/ADMM')
+# 模拟波传播模型
+p.add_argument('--prop_model', type=str, default='ASM', help='Type of propagation model, ASM/NH/HIL/PARTIAL/?')
 p.add_argument('--root_path', type=str, default='./phases', help='Directory where optimized phases will be saved.')
 p.add_argument('--data_path', type=str, default='./data', help='Directory for the dataset')
 p.add_argument('--generator_dir', type=str, default='./pretrained_networks',
@@ -104,6 +106,7 @@ summaries_dir = os.path.join(root_path, 'summaries')
 utils.cond_mkdir(summaries_dir)
 writer = SummaryWriter(summaries_dir)
 
+# 使用循环相机优化
 # Hardware setup for CITL
 if opt.citl:
     camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.12,
@@ -113,10 +116,11 @@ if opt.citl:
 else:
     camera_prop = None
 
+# 模拟波传播模型
 # Simulation model
 if opt.prop_model == 'ASM':
     propagator = propagation_ASM  # Ideal model
-elif opt.prop_model.upper() == 'MODEL':
+elif opt.prop_model.upper() == 'NH':
     blur = utils.make_kernel_gaussian(0.85, 3)
     propagator = ModelPropagate(distance=prop_dist,  # Parameterized wave propagation model
                                 feature_size=feature_size,
@@ -162,10 +166,11 @@ elif opt.method == 'UNET':
     phase_only_algorithm = PhaseOnlyUnet(num_features_init=32).to(device)
     model_path = os.path.join(opt.generator_dir, f'unet20_{chan_str}.pth')
     image_res = (1024, 2048)
-elif opt.method == "UNET3D":
-    phase_only_algorithm = Unet3D().to(device)
-    model_path = os.path.join(opt.generator_dir, f'unet3d_{chan_str}.pth')
-    image_res = (1024, 2048)
+# 待实现的3D优化方法
+# elif opt.method == "ADMM":
+#     phase_only_algorithm = ADMM()
+#     model_path = os.path.join(opt.generator_dir, f'unet3d_{chan_str}.pth')
+#     image_res = (1024, 2048)
 
 # 加载训练好的优化网络
 if 'NET' in opt.method:

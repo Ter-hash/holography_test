@@ -29,7 +29,7 @@ from propagation_partial import PartialProp
 from utils.augmented_image_loader import ImageLoader
 import utils.utils as utils
 from utils.modules import PhysicalProp
-from propagation_model import ModelPropagate
+from propagation_NH import ModelPropagate
 
 # Command line argument processing
 p = configargparse.ArgumentParser()

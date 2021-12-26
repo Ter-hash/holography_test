@@ -15,12 +15,16 @@ journal = {ACM Trans. Graph. (SIGGRAPH Asia)},
 year = {2020},
 }
 
+NH:a 2D wave propagation model that is trained using an SGD-based camera-in-the-loop training strategy aka neural
+holography; once trained, this model is used to generate new holograms using an SGD solver
+
+NH:使用 SGD-CITL 训练 2D 波传播模型
+
 -----
 
 $ python train_model.py --channel=1 --experiment=test
 
 """
-
 
 import os
 import cv2
@@ -35,10 +39,9 @@ import torch.optim as optim
 
 import utils.utils as utils
 from utils.modules import PhysicalProp
-from propagation_model import ModelPropagate
+from propagation_NH import ModelPropagate
 from utils.augmented_image_loader import ImageLoader
 from utils.utils_tensorboard import SummaryModelWriter
-
 
 # Command line argument processing
 p = configargparse.ArgumentParser()
@@ -56,7 +59,6 @@ p.add_argument('--num_epochs', type=int, default=15, help='Number of epochs')
 p.add_argument('--batch_size', type=int, default=2, help='Size of minibatch')
 p.add_argument('--step_lr', type=utils.str2bool, default=True, help='Use of lr scheduler')
 p.add_argument('--experiment', type=str, default='', help='Name of the experiment')
-
 
 # parse arguments
 opt = p.parse_args()
@@ -99,7 +101,7 @@ utils.cond_mkdir(model_path)
 phase_path = opt.phase_path  # path of precomputed phase pool
 data_path = f'./data/train1080'  # path of targets
 
-
+# 硬件部分
 # Hardware setup
 camera_prop = PhysicalProp(channel, laser_arduino=True, roi_res=(roi_res[1], roi_res[0]), slm_settle_time=0.15,
                            range_row=(220, 1000), range_col=(300, 1630),
@@ -152,7 +154,7 @@ writer = SummaryModelWriter(model, f'{summaries_dir}', ch=channel)
 i_acc = 0
 for e in range(opt.num_epochs):
 
-    print(f'   - Epoch {e+1} ...')
+    print(f'   - Epoch {e + 1} ...')
     # visualize all the modules in the model on tensorboard
     with torch.no_grad():
         writer.visualize_model(e)
@@ -200,7 +202,7 @@ for e in range(opt.num_epochs):
             # calculate loss and backpropagate to phase
             with torch.no_grad():
                 scale_phase = (model_amp * target_amp).mean(dim=[-2, -1], keepdims=True) / \
-                    (model_amp**2).mean(dim=[-2, -1], keepdims=True)
+                              (model_amp ** 2).mean(dim=[-2, -1], keepdims=True)
 
                 # or we can optimize scale with regression and statistics of the image
                 # scale_phase = target_amp.mean(dim=[-2,-1], keepdims=True).detach() * sa + sb
@@ -231,7 +233,6 @@ for e in range(opt.num_epochs):
         # 3) model update loop
         model = model.train()
         for j in range(num_iters_model_update):
-
             # zero grad
             optimizer_model.zero_grad()
 
